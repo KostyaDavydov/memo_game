@@ -1,0 +1,15 @@
+# Build directory
+build/
+
+# C/C++
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.lib
+*.out
+*.app
+
+# Other
+*.user
