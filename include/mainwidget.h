@@ -28,6 +28,9 @@ public:
 
 private:
     void setupUI();
+    void setupConnections();
+    void createCards();
+    void updateScore(int newScore);
 
     // UI Components
     QGraphicsView *m_gameView;
@@ -61,6 +64,14 @@ private:
     QVBoxLayout *m_mainLayout;
     QHBoxLayout *m_gameLayout;
     QVBoxLayout *m_sidePanelLayout;
+
+    // Game State
+    int m_score;
+    int m_moves;
+    int m_matches;
+
+private slots:
+    void onStartGame();
 };
 
 //==========================================================

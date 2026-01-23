@@ -1,5 +1,8 @@
 #include "mainwidget.h"
 #include "gamescene.h"
+#include "carditem.h"
+
+#include <QTimer>
 
 //==========================================================
 //==========================================================
@@ -8,6 +11,7 @@ MainWidget::MainWidget(QWidget *parent)
     : QWidget(parent)
 {
     setupUI();
+    setupConnections();
 
     // Set window properties
     setWindowTitle("Memory Card Game");
@@ -130,3 +134,99 @@ void MainWidget::setupUI()
     m_mainLayout->addLayout(m_gameLayout, 4);
     m_mainLayout->addWidget(m_statusBar, 1);
 }
+
+//==========================================================
+
+void MainWidget::setupConnections()
+{
+    // Button connections
+    connect(m_startButton, &QPushButton::clicked, this, &MainWidget::onStartGame);
+}
+
+//==========================================================
+
+void MainWidget::onStartGame()
+{
+    // Disable settings during game
+    m_difficultyCombo->setEnabled(false);
+    m_cardCountSpin->setEnabled(false);
+    m_themeCombo->setEnabled(false);
+
+    // Enable game controls
+    m_resetButton->setEnabled(true);
+    m_hintButton->setEnabled(true);
+    m_undoButton->setEnabled(true);
+    m_startButton->setEnabled(false);
+    m_startButton->setText("Game Running");
+
+    // Reset game state
+    m_score = 0;
+    m_moves = 0;
+    m_matches = 0;
+
+    // Clear existing cards and create new ones
+    m_gameScene->clear();
+    createCards();
+
+    // Update status
+    m_statusBar->showMessage("Game started! Find matching cards.");
+    updateScore(0);
+}
+
+//==========================================================
+
+void MainWidget::createCards()
+{
+    int cardCount = m_cardCountSpin->value();
+    int cardWidth = 100;
+    int cardHeight = 140;
+    int spacing = 10;
+
+    // Calculate grid dimensions
+    int cols = (cardCount <= 16) ? 4 : 6;
+    int rows = (cardCount + cols - 1) / cols;
+
+    // Calculate starting position to center the grid
+    int totalWidth = cols * (cardWidth + spacing) - spacing;
+    int totalHeight = rows * (cardHeight + spacing) - spacing;
+
+    int startX = (m_gameScene->width() - totalWidth) / 2;
+    int startY = (m_gameScene->height() - totalHeight) / 2;
+
+    // Create cards
+    for (int i = 0; i < cardCount; i++) {
+        int row = i / cols;
+        int col = i % cols;
+
+        int x = startX + col * (cardWidth + spacing);
+        int y = startY + row * (cardHeight + spacing);
+
+        // Create card item (you'll need to implement CardItem class)
+        CardItem *card = new CardItem(i, 1, QRectF(0, 0, cardWidth, cardHeight));
+        card->setPos(x, y);
+        m_gameScene->addItem(card);
+
+        // Connect card signals
+        // Assuming CardItem has a clicked signal:
+        // connect(card, &CardItem::clicked, this, &MainWidget::onCardClicked);
+    }
+
+    m_matchesLabel->setText(QString("0/%1").arg(cardCount / 2));
+}
+
+//==========================================================
+
+void MainWidget::updateScore(int newScore)
+{
+    m_score = newScore;
+    m_scoreLabel->setText(QString::number(m_score));
+
+    // Add some visual feedback for score changes
+    if (newScore > 0) {
+        m_scoreLabel->setStyleSheet("QLabel { font-weight: bold; font-size: 16px; color: #27ae60; }");
+        QTimer::singleShot(500, this, [this]() {
+            m_scoreLabel->setStyleSheet("QLabel { font-weight: bold; font-size: 16px; color: #e74c3c; }");
+        });
+    }
+}
+
