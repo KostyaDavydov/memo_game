@@ -1,21 +1,26 @@
 #ifndef MAINWIDGET_H
 #define MAINWIDGET_H
 
+//==========================================================
+//==========================================================
+
+#include <QWidget>
 #include <QGraphicsView>
-#include <QGroupBox>
-#include <QPushButton>
-#include <QComboBox>
-#include <QSpinBox>
-#include <QLabel>
-#include <QProgressBar>
-#include <QStatusBar>
-#include <QHBoxLayout>
+#include <QGraphicsScene>
 #include <QVBoxLayout>
-#include <QFormLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QSpinBox>
+#include <QComboBox>
+#include <QGroupBox>
+#include <QStatusBar>
+#include <QProgressBar>
 
 //==========================================================
 //==========================================================
 
+class CardItem;
 class GameScene;
 
 class MainWidget : public QWidget
@@ -26,10 +31,18 @@ public:
     MainWidget(QWidget *parent = nullptr);
     ~MainWidget();
 
+private slots:
+    void onStartGame();
+    void onResetGame();
+    void onCardClicked(int cardId);
+    void onDifficultyChanged(int index);
+    void onCardCountChanged(int value);
+    void updateGameInfo();
+
 private:
     void setupUI();
-    void setupConnections();
     void createCards();
+    void setupConnections();
     void updateScore(int newScore);
 
     // UI Components
@@ -69,9 +82,7 @@ private:
     int m_score;
     int m_moves;
     int m_matches;
-
-private slots:
-    void onStartGame();
+    QTimer *m_gameTimer;
 };
 
 //==========================================================

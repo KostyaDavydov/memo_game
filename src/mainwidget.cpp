@@ -3,15 +3,24 @@
 #include "carditem.h"
 
 #include <QTimer>
+#include <QTime>
+#include <QMessageBox>
+#include <QFormLayout>
 
 //==========================================================
 //==========================================================
 
 MainWidget::MainWidget(QWidget *parent)
     : QWidget(parent)
+    , m_score(0)
+    , m_moves(0)
+    , m_matches(0)
 {
     setupUI();
     setupConnections();
+
+    // Initialize with default values
+    updateGameInfo();
 
     // Set window properties
     setWindowTitle("Memory Card Game");
@@ -23,6 +32,7 @@ MainWidget::MainWidget(QWidget *parent)
 
 MainWidget::~MainWidget()
 {
+    delete m_gameTimer;
 }
 
 //==========================================================
@@ -133,6 +143,10 @@ void MainWidget::setupUI()
     // Add everything to main layout
     m_mainLayout->addLayout(m_gameLayout, 4);
     m_mainLayout->addWidget(m_statusBar, 1);
+
+    // Create game timer
+    m_gameTimer = new QTimer(this);
+    m_gameTimer->setInterval(1000); // 1 second
 }
 
 //==========================================================
@@ -141,6 +155,19 @@ void MainWidget::setupConnections()
 {
     // Button connections
     connect(m_startButton, &QPushButton::clicked, this, &MainWidget::onStartGame);
+    connect(m_resetButton, &QPushButton::clicked, this, &MainWidget::onResetGame);
+
+    // Settings connections
+    connect(m_difficultyCombo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWidget::onDifficultyChanged);
+    connect(m_cardCountSpin, QOverload<int>::of(&QSpinBox::valueChanged),
+            this, &MainWidget::onCardCountChanged);
+
+    // Timer connection
+    connect(m_gameTimer, &QTimer::timeout, this, &MainWidget::updateGameInfo);
+
+    // Connect to card signals (assuming CardItem emits a signal when clicked)
+    // This will be connected when cards are created
 }
 
 //==========================================================
@@ -168,9 +195,136 @@ void MainWidget::onStartGame()
     m_gameScene->clear();
     createCards();
 
+    // Start game timer
+    m_gameTimer->start();
+
     // Update status
     m_statusBar->showMessage("Game started! Find matching cards.");
     updateScore(0);
+}
+
+//==========================================================
+
+void MainWidget::onResetGame()
+{
+    // Stop timer
+    m_gameTimer->stop();
+
+    // Re-enable settings
+    m_difficultyCombo->setEnabled(true);
+    m_cardCountSpin->setEnabled(true);
+    m_themeCombo->setEnabled(true);
+
+    // Disable game controls
+    m_resetButton->setEnabled(false);
+    m_hintButton->setEnabled(false);
+    m_undoButton->setEnabled(false);
+    m_startButton->setEnabled(true);
+    m_startButton->setText("Start Game");
+
+    // Clear scene
+    m_gameScene->clear();
+
+    // Reset labels
+    m_timeLabel->setText("00:00");
+    m_matchesLabel->setText("0/0");
+    m_progressBar->setValue(0);
+
+    // Update status
+    m_statusBar->showMessage("Game reset. Ready to start a new game!");
+}
+
+//==========================================================
+
+void MainWidget::onCardClicked(int cardId)
+{
+    // Increment moves
+    m_moves++;
+
+    // Update moves label
+    m_movesLabel->setText(QString::number(m_moves));
+
+    // Update status
+    m_statusBar->showMessage(QString("Card %1 clicked. Moves: %2").arg(cardId).arg(m_moves));
+
+    // Check for game completion
+    int totalPairs = m_cardCountSpin->value() / 2;
+    if (m_matches >= totalPairs) {
+        m_gameTimer->stop();
+        QMessageBox::information(this, "Congratulations!",
+                                 QString("You won!\nScore: %1\nMoves: %2").arg(m_score).arg(m_moves));
+    }
+}
+
+//==========================================================
+
+void MainWidget::onDifficultyChanged(int index)
+{
+    QString difficulty = m_difficultyCombo->itemText(index);
+    m_statusBar->showMessage(QString("Difficulty set to: %1").arg(difficulty));
+
+    // Adjust card count based on difficulty
+    switch(index) {
+    case 0: // Easy
+        m_cardCountSpin->setValue(12);
+        break;
+    case 1: // Medium
+        m_cardCountSpin->setValue(16);
+        break;
+    case 2: // Hard
+        m_cardCountSpin->setValue(24);
+        break;
+    }
+}
+
+//==========================================================
+
+void MainWidget::onCardCountChanged(int value)
+{
+    // Ensure even number of cards
+    if (value % 2 != 0) {
+        m_cardCountSpin->setValue(value + 1);
+        return;
+    }
+
+    m_statusBar->showMessage(QString("Card count set to: %1").arg(value));
+    m_matchesLabel->setText(QString("0/%1").arg(value / 2));
+}
+
+//==========================================================
+
+void MainWidget::updateGameInfo()
+{
+    // Update time (simplified - you'd track actual elapsed time)
+    static int seconds = 0;
+    seconds++;
+
+    QTime time(0, 0, 0);
+    time = time.addSecs(seconds);
+    m_timeLabel->setText(time.toString("mm:ss"));
+
+    // Update progress
+    int totalPairs = m_cardCountSpin->value() / 2;
+    if (totalPairs > 0) {
+        int progress = (m_matches * 100) / totalPairs;
+        m_progressBar->setValue(progress);
+    }
+}
+
+//==========================================================
+
+void MainWidget::updateScore(int newScore)
+{
+    m_score = newScore;
+    m_scoreLabel->setText(QString::number(m_score));
+
+    // Add some visual feedback for score changes
+    if (newScore > 0) {
+        m_scoreLabel->setStyleSheet("QLabel { font-weight: bold; font-size: 16px; color: #27ae60; }");
+        QTimer::singleShot(500, this, [this]() {
+            m_scoreLabel->setStyleSheet("QLabel { font-weight: bold; font-size: 16px; color: #e74c3c; }");
+        });
+    }
 }
 
 //==========================================================
@@ -212,21 +366,5 @@ void MainWidget::createCards()
     }
 
     m_matchesLabel->setText(QString("0/%1").arg(cardCount / 2));
-}
-
-//==========================================================
-
-void MainWidget::updateScore(int newScore)
-{
-    m_score = newScore;
-    m_scoreLabel->setText(QString::number(m_score));
-
-    // Add some visual feedback for score changes
-    if (newScore > 0) {
-        m_scoreLabel->setStyleSheet("QLabel { font-weight: bold; font-size: 16px; color: #27ae60; }");
-        QTimer::singleShot(500, this, [this]() {
-            m_scoreLabel->setStyleSheet("QLabel { font-weight: bold; font-size: 16px; color: #e74c3c; }");
-        });
-    }
 }
 
